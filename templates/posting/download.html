@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container text-center">
+    <h2 class="my-2">Download Files from Cloud</h2>
+
+    <div class="form-group d-flex justify-content-center align-items-center mb-4">
+        <!-- Google Drive Button -->
+        <button type="button" id="googleDriveBtn" class="btn btn-primary mb-2">Select from Google Drive</button>
+
+        <!-- Dropbox Button -->
+        <button type="button" id="dropboxBtn" class="btn btn-primary mb-2">Select from Dropbox</button>
+
+        <!-- OneDrive Button -->
+        <button type="button" id="oneDriveBtn" class="btn btn-primary mb-2">Select from OneDrive</button>
+    </div>
+
+    <!-- Tempat untuk menampilkan file yang dipilih dari cloud -->
+    <div id="cloud-files" class="mt-4">
+        <h4>Selected Files from Cloud</h4>
+        <ul id="file-list"></ul>
+    </div>
+
+    <a href="{% url 'reconstruct_secret_sharing' %}" class="btn btn-success mt-3">Go to Reconstruct Page</a>
+</div>
+
+<script>
+    // Fungsi untuk menampilkan dan mendownload file dari Google Drive
+    document.getElementById('googleDriveBtn').addEventListener('click', function() {
+        fetch('/posting/fetch_from_google_drive_ajax/')
+        .then(response => response.json())
+        .then(data => {
+            let fileList = document.getElementById('file-list');
+            fileList.innerHTML = ''; // Bersihkan daftar file sebelumnya
+            if (data.files && data.files.length > 0) {
+                data.files.forEach(file => {
+                    let li = document.createElement('li');
+                    li.textContent = file.name;
+                
+                    // Tombol untuk mengunduh file
+                let downloadBtn = document.createElement('button');
+                downloadBtn.textContent = 'Download';
+                
+                downloadBtn.onclick = function() {
+                    let encodedFileName = encodeURIComponent(file.id);  // Gunakan file ID dari Google Drive
+                    window.location.href = `/posting/download_from_google_drive/${encodedFileName}/`;  // Redirect ke URL download
+                };
+    
+            li.appendChild(downloadBtn);
+            fileList.appendChild(li);
+        });
+    } else {
+        let li = document.createElement('li');
+        li.textContent = 'No files found in Google Drive.';
+        fileList.appendChild(li);
+    }
+    })
+    .catch(error => console.error('Error fetching files from Google Drive:', error));
+});
+
+    // Fungsi untuk menampilkan dan mendownload file dari Dropbox
+    document.getElementById('dropboxBtn').addEventListener('click', function() {
+        fetch('/posting/fetch_from_dropbox_ajax/')
+        .then(response => response.json())
+        .then(data => {
+            let fileList = document.getElementById('file-list');
+            fileList.innerHTML = ''; // Bersihkan daftar file sebelumnya
+            if (data.files && data.files.length > 0) {
+                data.files.forEach(file => {
+                    let li = document.createElement('li');
+                    li.textContent = file.name;
+    
+                    // Tombol untuk mengunduh file
+                    let downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = 'Download';
+                    
+                    downloadBtn.onclick = function() {
+                        let encodedFileName = encodeURIComponent(file.name);  // Encode nama file untuk URL
+                        window.location.href = `/posting/download_from_dropbox/${encodedFileName}/`;  // Redirect ke URL download
+                    };
+    
+                    li.appendChild(downloadBtn);
+                    fileList.appendChild(li);
+                });
+            } else {
+                let li = document.createElement('li');
+                li.textContent = 'No files found in Dropbox.';
+                fileList.appendChild(li);
+            }
+        })
+        .catch(error => console.error('Error fetching files from Dropbox:', error));
+    });
+    
+    // Fungsi untuk menampilkan dan mendownload file dari OneDrive
+    document.getElementById('oneDriveBtn').addEventListener('click', function() {
+        fetch('/posting/fetch_from_onedrive_ajax/', {  
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            let fileList = document.getElementById('file-list');
+            fileList.innerHTML = ''; // Bersihkan daftar file sebelumnya
+    
+            // Pastikan data.files ada dan merupakan array
+            if (data.files && Array.isArray(data.files)) {
+                data.files.forEach(file => {
+                    let li = document.createElement('li');
+                    li.textContent = file.name;
+    
+                    // Tombol untuk mengunduh file
+                    let downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = 'Download';
+    
+                    downloadBtn.onclick = function() {
+                        let encodedFileName = encodeURIComponent(file.id);  // Gunakan file ID dari OneDrive
+                        window.location.href = `/posting/download_from_onedrive/${encodedFileName}/`;  // Redirect ke URL download
+                    };
+    
+                    li.appendChild(downloadBtn);
+                    fileList.appendChild(li);
+                });
+            } else {
+                // Jika tidak ada file ditemukan, tampilkan pesan
+                console.error('No files found in OneDrive response.');
+                let li = document.createElement('li');
+                li.textContent = 'No files found in OneDrive.';
+                fileList.appendChild(li);
+            }
+        })
+        .catch(error => console.error('Error fetching files from OneDrive:', error));
+    });
+    
+
+
+
+</script>
+
+<style>
+    .btn-primary {
+        background-color: #10223A;
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        font-size: 16px;
+        margin: 0 10px; 
+    }
+
+    /* Mengatur list item agar lebih rapih */
+    #file-list {
+        list-style-position: inside; /* Buat titik lebih dekat ke teks */
+        padding-left: 0; /* Hilangkan padding kiri dari list */
+        margin-top: 10px;
+
+        /* Memusatkan daftar file */
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Pusatkan item list */
+    }
+
+    #file-list li {
+        display: flex;
+        align-items: center; /* Agar nama file dan tombol sejajar */
+        margin-bottom: 10px; /* Tambahkan margin bawah untuk setiap item list */
+        width: 200px; 
+    }
+
+    .file-name {
+        flex: 1; /* Buat nama file menggunakan seluruh lebar yang tersedia */
+        word-break: break-all; /* Potong kata jika terlalu panjang */
+        padding-right: 10px; /* Memberi jarak antara nama file dan tombol */
+    }
+
+    .btn-sm {
+        font-size: 14px;
+        padding: 5px 10px;
+    }
+
+</style>
+{% endblock %}
