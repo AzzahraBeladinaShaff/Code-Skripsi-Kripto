@@ -46,6 +46,12 @@ def generate_keys(request):
     else:
         return render(request, 'posting/generate_keys.html')
 
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from django.http import HttpResponse
+import os
+import time
+
 def encrypt_file(request):
     if request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
@@ -70,7 +76,7 @@ def encrypt_file(request):
                 # Enkripsi file menggunakan AES
                 encrypted_file_path = encrypt_file_util(file_path, key)
                 
-                 # Catat waktu selesai enkripsi
+                # Catat waktu selesai enkripsi
                 end_time = time.perf_counter()
                 
                 # Hitung durasi enkripsi AES
@@ -109,16 +115,23 @@ def encrypt_file(request):
                 rsa_encryption_duration = end_time_rsa_encryption - start_time_rsa_encryption
                 logger.info(f"RSA encryption duration: {rsa_encryption_duration} seconds")
                 
-                # Simpan kunci RSA ke file (opsional, sesuai kebutuhan)
-                save_rsa_keys_to_file(public_key, private_key, 'public_key.txt', 'private_key.txt')
+                # Simpan kunci RSA ke file (menggunakan default_storage untuk memastikan akses dari MEDIA_ROOT)
+                public_key_path = default_storage.save('public_key.txt', ContentFile(f"{public_key[0]},{public_key[1]}"))
+                private_key_path = default_storage.save('private_key.txt', ContentFile(f"{private_key[0]},{private_key[1]}"))
+
+                # URL untuk pengunduhan file kunci
+                public_key_url = default_storage.url(public_key_path)
+                private_key_url = default_storage.url(private_key_path)
 
                 uploaded_instance.save()
                 return render(request, 'posting/result_enkrip.html', {
-    'encrypted_file': uploaded_instance,
-    'duration': encryption_duration,
-    'rsa_keygen_duration': rsa_keygen_duration,
-    'rsa_encryption_duration': rsa_encryption_duration,
-})
+                    'encrypted_file': uploaded_instance,
+                    'duration': encryption_duration,
+                    'rsa_keygen_duration': rsa_keygen_duration,
+                    'rsa_encryption_duration': rsa_encryption_duration,
+                    'public_key_url': public_key_url,
+                    'private_key_url': private_key_url,
+                })
             except Exception as e:
                 logger.error(f"Error during encryption: {e}")
                 return HttpResponse("Encryption failed.", status=500)
@@ -128,6 +141,7 @@ def encrypt_file(request):
     else:
         form = UploadFileForm()
         return render(request, 'posting/encrypt.html', {'form': form})
+
     
 def decrypt_file(request):
     if request.method == 'POST':
@@ -253,6 +267,17 @@ def split_secret_sharing(request, encrypted_file_id):
         # Simpan bagian besar ke model
         with open(large_part_path, 'rb') as f:
             encrypted_file.large_part.save('large_part.enc', File(f))
+            
+        # Upload large part to Google Drive
+        credentials = Credentials(**request.session['google_drive_credentials'])
+        drive_service = build('drive', 'v3', credentials=credentials)
+        
+        with open(large_part_path, 'rb') as large_file:
+            file_metadata = {'name': os.path.basename(large_part_path)}
+            media = MediaFileUpload(large_file.name)
+            drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        
+        logger.info(f"Large part uploaded to Google Drive successfully.")
         
         # Pastikan direktori 'shares' ada
         shares_dir = os.path.join(settings.MEDIA_ROOT, 'shares')
@@ -407,6 +432,7 @@ def refresh_onedrive_token(request):
             request.session['onedrive_refresh_token'] = result.get('refresh_token', refresh_token)
             request.session['onedrive_token_info'] = {'expires_at': time.time() + result['expires_in']}
             logger.info("Token refreshed successfully.")
+            return True
         else:
             error_msg = result.get('error_description', 'Unknown error during token refresh')
             logger.error(f"Failed to refresh token: {error_msg}")
@@ -646,25 +672,34 @@ def download_from_dropbox(request, file_name):
         return JsonResponse({'error': f'Failed to download file from Dropbox: {error}'}, status=400)
 
 def download_from_onedrive(request, file_id):
-    onedrive_token_info = request.session.get('onedrive_token')
-    if not onedrive_token_info:
-        return JsonResponse({'error': 'OneDrive token not found'}, status=400)
+    """Download a file from OneDrive."""
+    token_info = request.session.get('onedrive_token_info')
+    
+    # Check if the token is expired, and refresh it if necessary
+    if not token_info or is_token_expired(token_info):
+        refresh_result = refresh_onedrive_token(request)
+        if refresh_result is not True:  # If refreshing failed
+            return refresh_result
+    
+    access_token = request.session.get('onedrive_access_token')
+    if not access_token:
+        return JsonResponse({'error': 'OneDrive access token not found'}, status=401)
 
-    access_token = onedrive_token_info.get('access_token')
     headers = {
         'Authorization': f'Bearer {access_token}'
     }
 
-    # Unduh file dari OneDrive
+    # Attempt to download the file content from OneDrive
     response = requests.get(f'https://graph.microsoft.com/v1.0/me/drive/items/{file_id}/content', headers=headers)
     
     if response.status_code == 200:
-        # Ambil metadata file untuk mendapatkan nama file yang benar
+        # Retrieve file metadata to get the correct file name
         file_metadata_response = requests.get(f'https://graph.microsoft.com/v1.0/me/drive/items/{file_id}', headers=headers)
         if file_metadata_response.status_code == 200:
             file_metadata = file_metadata_response.json()
-            file_name = file_metadata.get('name', 'downloaded_file.txt')  # Default ke .txt jika tidak ada nama file
+            file_name = file_metadata.get('name', 'downloaded_file.txt')  # Default to .txt if file name not found
 
+            # Return file content as an attachment
             return HttpResponse(response.content, content_type='application/octet-stream', headers={
                 'Content-Disposition': f'attachment; filename="{file_name}"'
             })

@@ -26,8 +26,8 @@
         </div>
     </div> -->
 
-    <div class="mt-4">
-        <h3>Upload Shares to Cloud:</h3>
+    <div class="mt-4 text-center">
+        <h3>Upload File to Cloud:</h3>
         <form method="POST"
             action="{% url 'upload_shares_to_cloud' encrypted_file_id %}">
             {% csrf_token %}
@@ -41,7 +41,7 @@
 
     </div>
 
-    <div class="mt-4">
+    <!-- <div class="mt-4">
         <h3>Large Part File:</h3>
         <p>This part is necessary to reconstruct the original file.</p>
         <a href="{{ large_part_url }}" class="btn btn-primary">Download Large
@@ -55,6 +55,6 @@
             <li>{{ share_file_path }}</li>
             {% endfor %}
         </ul>
-    </div>
+    </div> -->
 </div>
 {% endblock %}

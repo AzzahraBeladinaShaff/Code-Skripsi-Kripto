@@ -1,4 +1,3 @@
-<!-- posting/templates/posting/result.html -->
 {% extends 'base.html' %}
 
 {% block content %}
@@ -11,9 +10,23 @@
     <div class="alert alert-info" role="alert">
         Encryption took {{ duration }} seconds.
     </div>
+    <!-- <div class="alert alert-info" role="alert">
+        RSA Key Generation took {{ rsa_keygen_duration }} seconds.
+    </div>
+    <div class="alert alert-info" role="alert">
+        RSA Encryption of AES Key took {{ rsa_encryption_duration }} seconds.
+    </div> -->
+
+    <div class="mt-4">
+        <h3>Download Your Keys</h3>
+        <p>Download your public and private keys to save them securely:</p>
+        <a href="{{ public_key_url }}" download="public_key.txt" class="btn btn-success m-2">Download Public Key</a>
+        <a href="{{ private_key_url }}" download="private_key.txt" class="btn btn-success m-2">Download Private Key</a>
+    </div>
+
     <div class="d-flex justify-content-center align-items-center mt-4">
-    <p class="mb-0 mr-3">You can now proceed to split the encrypted file using Secret Sharing</p>
-    <a href="{% url 'split_secret_sharing' encrypted_file.id %}" class="btn btn-primary btn-dark">Split Secret Sharing</a>
+        <p class="mb-0 mr-3">You can now proceed to split the encrypted file using Secret Sharing</p>
+        <a href="{% url 'split_secret_sharing' encrypted_file.id %}" class="btn btn-primary btn-dark">Split Secret Sharing</a>
     </div>
 </div>
 {% endblock %}

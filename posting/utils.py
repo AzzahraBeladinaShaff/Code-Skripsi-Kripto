@@ -578,25 +578,3 @@ def reconstruct_from_shares(small_part_shares, large_part):
     reconstructed_small_part = shamir_reconstruct_small_part(small_part_shares)
     reconstructed_data = join_data(reconstructed_small_part, large_part)
     return reconstructed_data
-
-
-#UPLOAD KE CLOUD
-# def upload_to_google_drive(file_path, folder_id=None):
-#     gauth = GoogleAuth()
-#     gauth.LoadClientConfigFile("client_secrets.json")
-
-#     # Autentikasi
-#     gauth.LocalWebserverAuth()  # Ini akan menghandle autentikasi
-
-#     drive = GoogleDrive(gauth)
-#     file_drive = drive.CreateFile({'title': os.path.basename(file_path), 'parents': [{'id': folder_id}] if folder_id else []})
-#     file_drive.SetContentFile(file_path)
-#     file_drive.Upload()
-#     return file_drive['id']
-
-# def upload_to_dropbox(file_path, dropbox_access_token):
-#     dbx = dropbox.Dropbox(dropbox_access_token)
-    
-#     with open(file_path, "rb") as f:
-#         dbx.files_upload(f.read(), "/" + os.path.basename(file_path), mute=True)
-#     return os.path.basename(file_path)

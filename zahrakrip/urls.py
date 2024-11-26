@@ -23,11 +23,7 @@ urlpatterns = [
     path('posting/result_reconstruct/', result_reconstruct, name='result_reconstruct'),
     path('posting/download_reconstructed/', download_reconstructed, name='download_reconstructed'),
     path('posting/oauth2callback/', oauth2callback, name='oauth2callback'),
-    # path('posting/dropbox_callback/', dropbox_callback, name='dropbox_callback'),
-    # path('posting/test-session/', test_session, name='test_session'),
-    # path('google-drive-authenticate/ <int:encrypted_file_id>/', google_drive_authenticate, name='google_drive_authenticate'),
-    # path('dropbox-authenticate/<int:encrypted_file_id>/', dropbox_authenticate, name='dropbox_authenticate'),
-]
+ ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
